@@ -1,0 +1,61 @@
+name: CI - Dev Branch
+
+on:
+  push:
+    branches: [ dev ]
+  workflow_dispatch:
+
+permissions: write-all
+
+jobs:
+  test-and-train:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Setup DVC
+      uses: iterative/setup-dvc@v1
+      
+    - name: Setup CML
+      uses: iterative/setup-cml@v2
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Run data validation tests
+      run: |
+        pytest tests/test_data_validation.py -v
+        
+    - name: Train model
+      run: |
+        python src/train.py
+        
+    - name: Run evaluation tests
+      run: |
+        pytest tests/test_evaluation.py -v
+        
+    - name: Evaluate model
+      run: |
+        python src/evaluate.py
+        
+    - name: Generate CML Report
+      env:
+        REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        echo "# ML Pipeline Report - Dev Branch" > report.md
+        echo "" >> report.md
+        echo "## Model Metrics" >> report.md
+        cat results/metrics.txt >> report.md
+        echo "" >> report.md
+        echo "## Confusion Matrix" >> report.md
+        echo "![Confusion Matrix](./results/confusion_matrix.png)" >> report.md
+        cml comment create report.md

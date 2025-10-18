@@ -1,0 +1,4 @@
+# Add patterns to exclude from DVC tracking
+*.pyc
+__pycache__
+.pytest_cache

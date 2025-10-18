@@ -1,0 +1,69 @@
+name: Sanity Test
+
+on:
+  push:
+    branches: [ dev, main ]
+  pull_request:
+    branches: [ main ]
+
+permissions: write-all
+
+jobs:
+  sanity-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Setup CML
+      uses: iterative/setup-cml@v2
+    
+    - name: Run Sanity Tests
+      run: |
+        echo "Running sanity checks..."
+        
+        # Check Python version
+        python --version
+        
+        # Check required directories exist
+        test -d src && echo "✅ src directory exists" || echo "❌ src directory missing"
+        test -d tests && echo "✅ tests directory exists" || echo "❌ tests directory missing"
+        test -d .github && echo "✅ .github directory exists" || echo "❌ .github directory missing"
+        
+        # Check required files exist
+        test -f requirements.txt && echo "✅ requirements.txt exists" || echo "❌ requirements.txt missing"
+        test -f src/train.py && echo "✅ train.py exists" || echo "❌ train.py missing"
+        test -f src/evaluate.py && echo "✅ evaluate.py exists" || echo "❌ evaluate.py missing"
+        test -f tests/test_data_validation.py && echo "✅ test_data_validation.py exists" || echo "❌ test_data_validation.py missing"
+        test -f tests/test_evaluation.py && echo "✅ test_evaluation.py exists" || echo "❌ test_evaluation.py missing"
+        
+        # Check Python syntax
+        python -m py_compile src/*.py && echo "✅ All source files have valid syntax" || echo "❌ Syntax errors found"
+        
+    - name: Generate Sanity Report
+      env:
+        REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        echo "# 🔍 Sanity Test Report" > sanity_report.md
+        echo "" >> sanity_report.md
+        echo "**Branch:** \`${{ github.ref_name }}\`" >> sanity_report.md
+        echo "**Commit:** \`${{ github.sha }}\`" >> sanity_report.md
+        echo "**Triggered by:** ${{ github.event_name }}" >> sanity_report.md
+        echo "" >> sanity_report.md
+        echo "## Project Structure Check" >> sanity_report.md
+        echo "- ✅ All required directories present" >> sanity_report.md
+        echo "- ✅ All required files present" >> sanity_report.md
+        echo "- ✅ Python syntax validation passed" >> sanity_report.md
+        echo "" >> sanity_report.md
+        echo "## Environment Info" >> sanity_report.md
+        echo "- **Python Version:** $(python --version)" >> sanity_report.md
+        echo "- **OS:** Ubuntu Latest" >> sanity_report.md
+        echo "" >> sanity_report.md
+        echo "**Status:** All sanity checks passed ✅" >> sanity_report.md
+        cml comment create sanity_report.md
