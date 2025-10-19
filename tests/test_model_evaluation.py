@@ -57,6 +57,4 @@ def test_model_accuracy():
     test_predictions = model.predict(X_test)
     test_accuracy = accuracy_score(y_test, test_predictions)
     
-    assert test_accuracy >= 0.85, f"Model accuracy {test_accuracy:.4f} below threshold 0.85"
-
-
+    assert test_accuracy >= 0.85, f"Model accuracy {test_accuracy:.4f} below threshold 0.
