@@ -1,7 +1,7 @@
 import pickle
 import os
 from sklearn.ensemble import RandomForestClassifier
-from preprocessing import load_and_prepare_data, preprocess_data, validate_data
+from src.preprocessing import load_and_prepare_data, preprocess_data, validate_data
 
 def train_model():
     """Train Random Forest model on IRIS dataset"""

@@ -5,7 +5,7 @@ import os
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support, confusion_matrix
 from sklearn.metrics import ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
-from preprocessing import load_and_prepare_data, preprocess_data
+from src.preprocessing import load_and_prepare_data, preprocess_data
 
 def evaluate_model():
     """Evaluate trained model"""
