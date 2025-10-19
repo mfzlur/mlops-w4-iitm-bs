@@ -1,0 +1,106 @@
+name: CI - Dev Branch
+
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+    branches:
+      - dev
+
+jobs:
+  test-and-report:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      
+      - name: Setup DVC
+        uses: iterative/setup-dvc@v1
+      
+      - name: Configure DVC remote
+        run: |
+          dvc remote modify gcs projectname ${{ secrets.GCP_PROJECT_ID }}
+      
+      - name: Pull data and model with DVC
+        run: |
+          dvc pull
+      
+      - name: Run data validation tests
+        run: |
+          pytest tests/test_data_validation.py -v --tb=short
+      
+      - name: Run model evaluation tests
+        run: |
+          pytest tests/test_model_evaluation.py -v --tb=short
+      
+      - name: Generate test report
+        if: always()
+        run: |
+          pytest tests/ -v --tb=short > test_report.txt 2>&1 || true
+      
+      - name: Setup CML
+        if: github.event_name == 'pull_request'
+        uses: iterative/setup-cml@v1
+      
+      - name: Create CML report
+        if: github.event_name == 'pull_request'
+        env:
+          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "# 🧪 CI Test Report - Dev Branch" >> report.md
+          echo "" >> report.md
+          echo "## 📊 Test Results" >> report.md
+          echo "" >> report.md
+          echo "\`\`\`" >> report.md
+          cat test_report.txt >> report.md
+          echo "\`\`\`" >> report.md
+          echo "" >> report.md
+          echo "## 📈 Model Performance" >> report.md
+          
+          python -c "
+          import joblib
+          import pandas as pd
+          from sklearn.model_selection import train_test_split
+          from sklearn.metrics import accuracy_score
+          
+          model = joblib.load('models/iris_model.pkl')
+          df = pd.read_csv('data/iris.csv')
+          X = df.drop('target', axis=1)
+          y = df['target']
+          
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+          
+          train_acc = accuracy_score(y_train, model.predict(X_train))
+          test_acc = accuracy_score(y_test, model.predict(X_test))
+          
+          print(f'- **Training Accuracy**: {train_acc:.4f}')
+          print(f'- **Test Accuracy**: {test_acc:.4f}')
+          print(f'- **Model Type**: {type(model).__name__}')
+          " >> report.md
+          
+          echo "" >> report.md
+          echo "✅ **All checks completed for dev branch!**" >> report.md
+          
+          cml comment create report.md
