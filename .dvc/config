@@ -1,4 +1,6 @@
 [core]
-    remote = storage
+    remote = gcs
 ['remote "storage"']
     url = gs://https://mlops-coursework-week3-bucket-rango
+['remote "gcs"']
+    url = gs://https://mlops-coursework-week3-bucket-rango/week4
