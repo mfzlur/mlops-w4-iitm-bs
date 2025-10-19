@@ -3,4 +3,4 @@
 ['remote "storage"']
     url = gs://https://mlops-coursework-week3-bucket-rango
 ['remote "gcs"']
-    url = gs://https://mlops-coursework-week3-bucket-rango/week4
+    url = gs://mlops-course-bucket-week1-rango-unique/week4
