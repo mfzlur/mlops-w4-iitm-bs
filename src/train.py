@@ -1,7 +1,7 @@
 import pickle
 import os
 from sklearn.ensemble import RandomForestClassifier
-from preprocessing import load_and_prepare_data, preprocess_data, validate_data
+from src.preprocessing import load_and_prepare_data, preprocess_data, validate_data
 
 def train_model():
     """Train Random Forest model on IRIS dataset"""
@@ -17,7 +17,7 @@ def train_model():
     print("Training model...")
     model = RandomForestClassifier(
         n_estimators=100,
-        max_depth=5,
+        max_depth=10,
         random_state=42
     )
     model.fit(X_train, y_train)
