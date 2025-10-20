@@ -33,7 +33,7 @@ jobs:
       # NEW: Write credentials to file and set environment variable
       - name: Setup GCS credentials for DVC
         run: |
-          echo '${{ secrets.GCP_SA_KEY }}' > $HOME/gcp-key.json
+          echo '${{ secrets.GCS_SA_KEY }}' > $HOME/gcp-key.json
           echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/gcp-key.json" >> $GITHUB_ENV
       
       - name: Setup DVC
