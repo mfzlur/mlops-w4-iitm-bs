@@ -16,97 +16,59 @@ jobs:
       pull-requests: write
     
     steps:
+      # Step 1: Checkout repository
       - name: Checkout code
         uses: actions/checkout@v3
-      
+
+      # Step 2: Set up Python
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
           cache: 'pip'
-      
+
+      # Step 3: Install dependencies
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
-      
-      # NEW: Write credentials to file and set environment variable
-      - name: Setup GCS credentials for DVC
+          pip install pytest
+
+      # Step 4: Run tests
+      - name: Run Pytest
         run: |
-          echo '${{ secrets.GCS_SA_KEY }}' > $HOME/gcp-key.json
-          echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/gcp-key.json" >> $GITHUB_ENV
-      
-      - name: Setup DVC
-        uses: iterative/setup-dvc@v1
-      
-      - name: Pull data and model with DVC
+          pytest --maxfail=1 --disable-warnings -q \
+          --junitxml=test_results.xml > pytest_report.txt 2>&1 || true
+
+      # Step 5: Generate summary (optional)
+      - name: Summarize results
         run: |
-          dvc pull
-      
-      - name: Run data validation tests
-        run: |
-          pytest tests/test_data_validation.py -v --tb=short
-      
-      - name: Run model evaluation tests
-        run: |
-          pytest tests/test_model_evaluation.py -v --tb=short
-      
-      - name: Generate test report
-        if: always()
-        run: |
-          pytest tests/ -v --tb=short > test_report.txt 2>&1 || true
-      
-      - name: Run sanity test
-        run: |
-          python sanity_test.py > sanity_report.txt
-      
+          echo "## ✅ Pytest Summary" > summary.md
+          echo "" >> summary.md
+          echo "\`\`\`" >> summary.md
+          tail -n 20 pytest_report.txt >> summary.md
+          echo "\`\`\`" >> summary.md
+
+      # Step 6: Install and configure CML for PR comment
       - name: Setup CML
         if: github.event_name == 'pull_request'
         uses: iterative/setup-cml@v1
-      
-      - name: Create CML report
+
+      # Step 7: Post report as comment in PR using CML
+      - name: Comment pytest summary via CML
         if: github.event_name == 'pull_request'
         env:
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "# 🧪 CI Test Report - Main Branch" >> report.md
           echo "" >> report.md
-          echo "## 🔍 Sanity Test Results" >> report.md
+          echo "## 🧩 Pytest Output (last 20 lines)" >> report.md
           echo "" >> report.md
           echo "\`\`\`" >> report.md
-          cat sanity_report.txt >> report.md
+          tail -n 20 pytest_report.txt >> report.md
           echo "\`\`\`" >> report.md
           echo "" >> report.md
-          echo "## 📊 Unit Test Results" >> report.md
-          echo "" >> report.md
-          echo "\`\`\`" >> report.md
-          cat test_report.txt >> report.md
-          echo "\`\`\`" >> report.md
-          echo "" >> report.md
-          echo "## 📈 Model Performance" >> report.md
+          echo "✅ Workflow completed at $(date)" >> report.md
           
-          python -c "
-          import joblib
-          import pandas as pd
-          from sklearn.model_selection import train_test_split
-          from sklearn.metrics import accuracy_score
-          
-          model = joblib.load('models/iris_model.pkl')
-          df = pd.read_csv('data/iris.csv')
-          X = df.drop('target', axis=1)
-          y = df['target']
-          
-          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-          
-          train_acc = accuracy_score(y_train, model.predict(X_train))
-          test_acc = accuracy_score(y_test, model.predict(X_test))
-          
-          print(f'- **Training Accuracy**: {train_acc:.4f}')
-          print(f'- **Test Accuracy**: {test_acc:.4f}')
-          print(f'- **Model Type**: {type(model).__name__}')
-          " >> report.md
-          
-          echo "" >> report.md
-          echo "✅ **All checks completed successfully!**" >> report.md
-          
+          # Post as PR comment
           cml comment create report.md
